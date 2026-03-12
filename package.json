@@ -1,0 +1,23 @@
+{
+  "name": "gantchart-v2",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.1",
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1"
+  },
+  "lint-staged": {
+    "frontend/src/**/*.{ts,tsx}": [
+      "npx --prefix frontend eslint --fix"
+    ],
+    "backend/**/*.py": [
+      "ruff check --fix --config backend/pyproject.toml",
+      "ruff format --config backend/pyproject.toml"
+    ]
+  }
+}
