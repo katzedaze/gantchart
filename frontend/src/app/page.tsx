@@ -40,6 +40,8 @@ const tools = [
   { href: "/tools/jwt-decoder", title: "JWT Decoder" },
   { href: "/tools/case-converter", title: "Case Converter" },
   { href: "/tools/qr-generator", title: "QR Code" },
+  { href: "/tools/dummy-image", title: "Dummy Image" },
+  { href: "/tools/image-whiteout", title: "Image Whiteout" },
 ];
 
 export default function Home() {
