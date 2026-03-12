@@ -304,7 +304,7 @@ bun run dev
 | `/members` | メンバー（ユーザー）管理 |
 | `/projects` | プロジェクト一覧（一括選択、アーカイブ、削除） |
 | `/projects/new` | 新規プロジェクト作成 |
-| `/projects/[projectId]` | プロジェクト詳細（課題/メンバータブ） |
+| `/projects/[projectId]` | プロジェクト詳細（課題一覧/カンバン/予実管理/メンバータブ） |
 | `/projects/[projectId]/gantt` | ガントチャートビュー |
 | `/projects/[projectId]/milestones` | マイルストーン管理 |
 | `/projects/[projectId]/issues/new` | 新規課題作成 |
@@ -406,7 +406,7 @@ gantchart-v2/
 │   │   │   ├── ui/              # 16 Shadcn UI コンポーネント
 │   │   │   ├── layout/          # Header, Sidebar
 │   │   │   ├── gantt/           # GanttChart, GanttBar, GanttMilestone
-│   │   │   ├── issues/          # IssueTable, IssueComments, KanbanBoard
+│   │   │   ├── issues/          # IssueTable, IssueComments, KanbanBoard, WorkHoursTable
 │   │   │   ├── members/         # MemberList
 │   │   │   └── shared/          # MarkdownEditor
 │   │   ├── hooks/               # 8 TanStack Query フック
@@ -445,9 +445,17 @@ gantchart-v2/
 
 - プロジェクトの CRUD 操作（一括操作対応）
 - メンバー管理（ロール付き）
-- 課題管理（ステータス、優先度、担当者、マイルストーン）
+- 課題管理（ステータス、優先度、担当者、マイルストーン、進捗率）
+- 親子課題の循環参照防止バリデーション（BFS による子孫検出）
 - ガントチャート（ドラッグ & リサイズ、依存関係の矢印表示）
-- カンバンボード
+  - 進捗率に基づくスケジュールステータス色分け（完了/順調/遅延気味/期限超過/未着手）
+  - 各ステータスの説明をツールチップで表示
+- カンバンボード（ドラッグ＆ドロップでステータス変更）
+  - マイルストーンバッジと進捗バーをカード上に表示
+- 予実管理表（予定工数 vs 実績工数の対比）
+  - マイルストーン別グループ集計
+  - 工数差異の色分け表示（予定以内/やや超過/大幅超過）
+  - ガントチャートと統一されたスケジュールステータス色
 - マイルストーン管理
 - コメント（Markdown 対応）と添付ファイル
 
@@ -492,7 +500,7 @@ pytest tests/test_dependencies.py -v
 | ------------- | ---- |
 | `test_users.py` | CRUD、メール重複、存在しないユーザー |
 | `test_projects.py` | CRUD、キー一意性、メンバー管理 |
-| `test_issues.py` | CRUD、自動キー生成、フィルタ、日付バリデーション、一括更新 |
+| `test_issues.py` | CRUD、自動キー生成、フィルタ、日付バリデーション、一括更新、進捗率、親子バリデーション |
 | `test_milestones.py` | CRUD |
 | `test_dependencies.py` | 作成、自己依存、循環検知、削除 |
 | `test_gantt.py` | 空プロジェクト、データ形状、依存関係 |
@@ -516,7 +524,7 @@ bun run test
 
 | テストファイル | 内容 |
 | ------------- | ---- |
-| `gantt-utils.test.ts` | dateToPixel, pixelToDate, バー計算、日付範囲 |
+| `gantt-utils.test.ts` | dateToPixel, pixelToDate, バー計算、日付範囲、スケジュールステータス判定 |
 | `validators.test.ts` | プロジェクト、課題、マイルストーンスキーマバリデーション |
 | `IssueTable.test.tsx` | レンダリング、バッジ、空状態 |
 | `useSkillProgress.test.ts` | API コントラクト、エンドポイントパス、レベルバリデーション |

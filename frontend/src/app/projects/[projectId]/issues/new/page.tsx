@@ -62,6 +62,7 @@ export default function NewIssuePage({
       priority: priority as "low" | "medium" | "high" | "critical",
       start_date: (formData.get("start_date") as string) || undefined,
       due_date: (formData.get("due_date") as string) || undefined,
+      progress: parseInt(formData.get("progress") as string) || 0,
       assignee_id: assigneeId || undefined,
       milestone_id: milestoneId || undefined,
       parent_id: parentId || undefined,
@@ -209,6 +210,37 @@ export default function NewIssuePage({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium">進捗率</label>
+              <div className="flex items-center gap-3">
+                <Input
+                  name="progress"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  defaultValue="0"
+                  className="h-2 flex-1"
+                  onChange={(e) => {
+                    const numInput = e.target.parentElement?.querySelector('input[type="number"]') as HTMLInputElement;
+                    if (numInput) numInput.value = e.target.value;
+                  }}
+                />
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  defaultValue="0"
+                  className="w-20"
+                  onChange={(e) => {
+                    const rangeInput = e.target.parentElement?.querySelector('input[type="range"]') as HTMLInputElement;
+                    if (rangeInput) rangeInput.value = e.target.value;
+                  }}
+                />
+                <span className="text-sm text-muted-foreground">%</span>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

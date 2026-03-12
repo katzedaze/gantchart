@@ -7,11 +7,21 @@ import {
   generateDateColumns,
   calculateBarLeft,
   calculateBarWidth,
+  scheduleStatusColors,
+  scheduleStatusLabels,
+  scheduleStatusDescriptions,
+  type ScheduleStatus,
 } from "@/lib/gantt-utils";
 import { GanttBar } from "./GanttBar";
 import { GanttMilestone } from "./GanttMilestone";
 import { useBulkUpdateIssues } from "@/hooks/useIssues";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface GanttChartProps {
   data: GanttData;
@@ -112,24 +122,27 @@ export function GanttChart({ data, projectId }: GanttChartProps) {
             +
           </Button>
         </div>
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <span className="inline-block h-3 w-3 rounded-sm bg-blue-500" />
-            タスク
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="inline-block h-3 w-3 rounded-sm bg-red-500" />
-            バグ
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="inline-block h-3 w-3 rounded-sm bg-green-500" />
-            ストーリー
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="inline-block h-0.5 w-3 bg-red-500" />
-            今日
-          </span>
-        </div>
+        <TooltipProvider>
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            {(Object.keys(scheduleStatusLabels) as ScheduleStatus[]).map((status) => (
+              <Tooltip key={status}>
+                <TooltipTrigger asChild>
+                  <span className="flex cursor-help items-center gap-1">
+                    <span className={`inline-block h-3 w-3 rounded-sm ${scheduleStatusColors[status].fill}`} />
+                    {scheduleStatusLabels[status]}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{scheduleStatusDescriptions[status]}</p>
+                </TooltipContent>
+              </Tooltip>
+            ))}
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-0.5 w-3 bg-red-500" />
+              今日
+            </span>
+          </div>
+        </TooltipProvider>
       </div>
 
       <div

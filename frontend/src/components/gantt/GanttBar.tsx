@@ -10,13 +10,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { formatDate } from "@/lib/gantt-utils";
-
-const typeColors: Record<string, string> = {
-  task: "bg-blue-500",
-  bug: "bg-red-500",
-  story: "bg-green-500",
-};
+import {
+  formatDate,
+  getScheduleStatus,
+  scheduleStatusColors,
+  scheduleStatusLabels,
+} from "@/lib/gantt-utils";
 
 interface GanttBarProps {
   issue: Issue;
@@ -41,17 +40,12 @@ export function GanttBar({
     origLeft: number;
     origWidth: number;
   } | null>(null);
-  const [currentLeft, setCurrentLeft] = useState(left);
-  const [currentWidth, setCurrentWidth] = useState(width);
+  const [dragOffset, setDragOffset] = useState<{ dl: number; dw: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const barRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!dragState) {
-      setCurrentLeft(left);
-      setCurrentWidth(width);
-    }
-  }, [left, width, dragState]);
+  const currentLeft = dragOffset ? left + dragOffset.dl : left;
+  const currentWidth = dragOffset ? width + dragOffset.dw : width;
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent, type: "move" | "resize-right") => {
@@ -62,11 +56,12 @@ export function GanttBar({
       setDragState({
         type,
         startX: e.clientX,
-        origLeft: currentLeft,
-        origWidth: currentWidth,
+        origLeft: left,
+        origWidth: width,
       });
+      setDragOffset({ dl: 0, dw: 0 });
     },
-    [currentLeft, currentWidth]
+    [left, width]
   );
 
   const handlePointerMove = useCallback(
@@ -75,36 +70,40 @@ export function GanttBar({
       const dx = e.clientX - dragState.startX;
 
       if (dragState.type === "move") {
-        setCurrentLeft(Math.max(0, dragState.origLeft + dx));
+        const dl = Math.max(-dragState.origLeft, dx);
+        setDragOffset({ dl, dw: 0 });
       } else {
-        setCurrentWidth(
-          Math.max(config.pixelsPerDay, dragState.origWidth + dx)
-        );
+        const dw = Math.max(config.pixelsPerDay - dragState.origWidth, dx);
+        setDragOffset({ dl: 0, dw });
       }
     },
     [dragState, config.pixelsPerDay]
   );
 
   const handlePointerUp = useCallback(async () => {
-    if (!dragState) return;
+    if (!dragState || !dragOffset) return;
     setDragState(null);
 
-    const newStartDate = pixelToDate(currentLeft, config);
-    const newEndDate = pixelToDate(currentLeft + currentWidth, config);
+    const finalLeft = left + dragOffset.dl;
+    const finalWidth = width + dragOffset.dw;
+    setDragOffset(null);
+
+    const newStartDate = pixelToDate(finalLeft, config);
+    const newEndDate = pixelToDate(finalLeft + finalWidth, config);
     const startStr = newStartDate.toISOString().split("T")[0];
     const endStr = newEndDate.toISOString().split("T")[0];
 
     try {
       await onUpdate(startStr, endStr);
     } catch {
-      setCurrentLeft(left);
-      setCurrentWidth(width);
       setError("Failed to save changes");
     }
-  }, [dragState, currentLeft, currentWidth, config, onUpdate, left, width]);
+  }, [dragState, dragOffset, left, width, config, onUpdate]);
 
-  const barColor = typeColors[issue.issue_type] || "bg-gray-500";
+  const scheduleStatus = getScheduleStatus(issue);
+  const statusColor = scheduleStatusColors[scheduleStatus];
   const BAR_HEIGHT = 24;
+  const progressWidth = Math.round((issue.progress / 100) * currentWidth);
 
   return (
     <TooltipProvider>
@@ -112,7 +111,7 @@ export function GanttBar({
         <TooltipTrigger asChild>
           <div
             ref={barRef}
-            className={`absolute flex cursor-grab items-center rounded ${barColor} text-white shadow-sm ${
+            className={`absolute flex cursor-grab items-center rounded ${statusColor.bar} shadow-sm ${
               dragState ? "opacity-80" : ""
             } ${error ? "ring-2 ring-red-400" : ""}`}
             style={{
@@ -126,7 +125,14 @@ export function GanttBar({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
           >
-            <span className="truncate px-2 text-xs">{issue.issue_key}</span>
+            {/* Progress fill */}
+            <div
+              className={`absolute left-0 top-0 h-full rounded-l ${progressWidth >= currentWidth ? "rounded-r" : ""} ${statusColor.fill}`}
+              style={{ width: progressWidth }}
+            />
+            <span className="relative z-10 truncate px-2 text-xs text-black">
+              {issue.issue_key} {issue.progress > 0 ? `${issue.progress}%` : ""}
+            </span>
             {/* Resize handle */}
             <div
               className="absolute right-0 top-0 h-full w-2 cursor-col-resize"
@@ -138,6 +144,9 @@ export function GanttBar({
           <p className="font-medium">{issue.title}</p>
           <p className="text-xs">
             {formatDate(issue.start_date)} - {formatDate(issue.due_date)}
+          </p>
+          <p className="text-xs">
+            進捗: {issue.progress}% / 状態: {scheduleStatusLabels[scheduleStatus]}
           </p>
           {error && <p className="text-xs text-red-400">{error}</p>}
         </TooltipContent>

@@ -55,6 +55,7 @@ export interface Issue {
   due_date: string | null;
   estimated_hours: number | null;
   actual_hours: number | null;
+  progress: number;
   sort_order: number;
   is_archived: boolean;
   created_at: string;

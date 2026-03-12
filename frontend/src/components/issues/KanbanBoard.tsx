@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
-import type { Issue, ProjectMemberWithUser } from "@/types";
+import type { Issue, ProjectMemberWithUser, Milestone } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { useUpdateIssue } from "@/hooks/useIssues";
 
@@ -37,18 +37,21 @@ interface KanbanBoardProps {
   issues: Issue[];
   projectId: string;
   members?: ProjectMemberWithUser[];
+  milestones?: Milestone[];
 }
 
 export function KanbanBoard({
   issues,
   projectId,
   members = [],
+  milestones = [],
 }: KanbanBoardProps) {
   const updateIssue = useUpdateIssue(projectId);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
 
   const memberMap = new Map(members.map((m) => [m.user_id, m]));
+  const milestoneMap = new Map(milestones.map((m) => [m.id, m]));
 
   const handleDragStart = useCallback(
     (e: React.DragEvent, issueId: string) => {
@@ -172,11 +175,33 @@ export function KanbanBoard({
                           </span>
                         )}
                       </div>
-                      {issue.due_date && (
-                        <p className="mt-1 text-[10px] text-muted-foreground">
-                          期日: {issue.due_date}
-                        </p>
+                      {/* Progress bar */}
+                      {issue.progress > 0 && (
+                        <div className="mt-2 flex items-center gap-1.5">
+                          <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full bg-emerald-500 transition-all"
+                              style={{ width: `${issue.progress}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] tabular-nums text-muted-foreground">
+                            {issue.progress}%
+                          </span>
+                        </div>
                       )}
+                      {/* Milestone & due date */}
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        {issue.milestone_id && milestoneMap.get(issue.milestone_id) && (
+                          <Badge variant="outline" className="h-4 px-1 text-[9px]">
+                            {milestoneMap.get(issue.milestone_id)!.name}
+                          </Badge>
+                        )}
+                        {issue.due_date && (
+                          <span className="text-[10px] text-muted-foreground">
+                            期日: {issue.due_date}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   );
                 })

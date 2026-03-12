@@ -130,7 +130,13 @@ async def update_issue(
     issue = await repo.get_by_id(issue_id)
     if not issue:
         raise HTTPException(status_code=404, detail="Issue not found")
-    return await repo.update(issue, **data.model_dump(exclude_unset=True))
+
+    update_data = data.model_dump(exclude_unset=True)
+    if "parent_id" in update_data:
+        service = IssueService(db)
+        await service.validate_parent_assignment(issue_id, update_data["parent_id"])
+
+    return await repo.update(issue, **update_data)
 
 
 @router.delete("/issues/{issue_id}", status_code=204)

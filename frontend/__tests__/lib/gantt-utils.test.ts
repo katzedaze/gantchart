@@ -7,6 +7,7 @@ import {
   getDateRange,
   generateDateColumns,
   formatDate,
+  getScheduleStatus,
 } from "@/lib/gantt-utils";
 
 const config = {
@@ -114,5 +115,84 @@ describe("formatDate", () => {
     const result = formatDate("2024-03-15");
     expect(result).toBeTruthy();
     expect(result).not.toBe("-");
+  });
+});
+
+describe("getScheduleStatus", () => {
+  const makeIssue = (overrides: Partial<{
+    status: string;
+    progress: number;
+    start_date: string | null;
+    due_date: string | null;
+  }> = {}) => ({
+    status: "in_progress",
+    progress: 0,
+    start_date: "2024-01-01",
+    due_date: "2024-01-31",
+    ...overrides,
+  });
+
+  it("returns completed for resolved issues", () => {
+    expect(getScheduleStatus(makeIssue({ status: "resolved" }))).toBe("completed");
+  });
+
+  it("returns completed for closed issues", () => {
+    expect(getScheduleStatus(makeIssue({ status: "closed" }))).toBe("completed");
+  });
+
+  it("returns on_track for in_progress issue when no dates", () => {
+    expect(getScheduleStatus(makeIssue({ start_date: null, due_date: null }))).toBe("on_track");
+  });
+
+  it("returns not_started for open issue when no dates", () => {
+    expect(getScheduleStatus(makeIssue({ status: "open", start_date: null, due_date: null }))).toBe("not_started");
+  });
+
+  it("returns not_started before start date", () => {
+    const now = new Date("2023-12-15");
+    expect(getScheduleStatus(makeIssue(), now)).toBe("not_started");
+  });
+
+  it("returns on_track when progress matches elapsed time", () => {
+    const now = new Date("2024-01-16"); // ~50% elapsed
+    expect(getScheduleStatus(makeIssue({ progress: 50 }), now)).toBe("on_track");
+  });
+
+  it("returns on_track when ahead of schedule", () => {
+    const now = new Date("2024-01-16"); // ~50% elapsed
+    expect(getScheduleStatus(makeIssue({ progress: 80 }), now)).toBe("on_track");
+  });
+
+  it("returns at_risk when behind schedule", () => {
+    const now = new Date("2024-01-16"); // ~50% elapsed
+    expect(getScheduleStatus(makeIssue({ progress: 10 }), now)).toBe("at_risk");
+  });
+
+  it("returns overdue when past due date and not complete", () => {
+    const now = new Date("2024-02-15"); // past due
+    expect(getScheduleStatus(makeIssue({ progress: 80 }), now)).toBe("overdue");
+  });
+
+  it("returns on_track at 100% progress even near deadline", () => {
+    const now = new Date("2024-01-30"); // near end
+    expect(getScheduleStatus(makeIssue({ progress: 100 }), now)).toBe("on_track");
+  });
+
+  it("returns on_track for in_progress issue without due_date", () => {
+    expect(
+      getScheduleStatus(makeIssue({ status: "in_progress", start_date: "2024-01-01", due_date: null }))
+    ).toBe("on_track");
+  });
+
+  it("returns on_track at exactly 70% of expected progress (boundary)", () => {
+    const now = new Date("2024-01-16"); // ~50% elapsed, expected ~50
+    // 70% of 50 = 35, so progress=35 should be on_track
+    expect(getScheduleStatus(makeIssue({ progress: 35 }), now)).toBe("on_track");
+  });
+
+  it("returns at_risk just below 70% of expected progress (boundary)", () => {
+    const now = new Date("2024-01-16"); // ~50% elapsed, expected ~50
+    // 70% of 50 = 35, so progress=34 should be at_risk
+    expect(getScheduleStatus(makeIssue({ progress: 34 }), now)).toBe("at_risk");
   });
 });

@@ -96,6 +96,9 @@ export default function MilestonesPage({
             <Link href={`/projects/${projectId}/gantt`}>ガントチャート</Link>
           </TabsTrigger>
           <TabsTrigger value="milestones">マイルストーン</TabsTrigger>
+          <TabsTrigger value="work-hours" asChild>
+            <Link href={`/projects/${projectId}?tab=work-hours`}>予実管理</Link>
+          </TabsTrigger>
           <TabsTrigger value="members" asChild>
             <Link href={`/projects/${projectId}`}>メンバー</Link>
           </TabsTrigger>

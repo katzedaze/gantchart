@@ -74,6 +74,33 @@ class IssueRepository(BaseRepository[Issue]):
         )
         await self.session.flush()
 
+    async def get_descendants(self, issue_id: uuid.UUID) -> set[uuid.UUID]:
+        """Get all descendant issue IDs (children, grandchildren, etc.)."""
+        descendants: set[uuid.UUID] = set()
+        queue = [issue_id]
+        while queue:
+            current_id = queue.pop()
+            children = await self.session.scalars(select(Issue.id).where(Issue.parent_id == current_id))
+            for child_id in children.all():
+                if child_id not in descendants:
+                    descendants.add(child_id)
+                    queue.append(child_id)
+        return descendants
+
+    async def get_ancestors(self, issue_id: uuid.UUID) -> set[uuid.UUID]:
+        """Get all ancestor issue IDs (parent, grandparent, etc.)."""
+        ancestors: set[uuid.UUID] = set()
+        current_id = issue_id
+        while current_id:
+            issue = await self.get_by_id(current_id)
+            if not issue or not issue.parent_id:
+                break
+            if issue.parent_id in ancestors:
+                break  # safety: already seen
+            ancestors.add(issue.parent_id)
+            current_id = issue.parent_id
+        return ancestors
+
     async def bulk_archive_by_project(self, project_id: uuid.UUID, issue_ids: list[uuid.UUID]) -> None:
         """Bulk archive issues belonging to a project."""
         await self.session.execute(

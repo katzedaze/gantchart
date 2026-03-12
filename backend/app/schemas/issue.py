@@ -38,6 +38,7 @@ class IssueCreate(BaseModel):
     start_date: date | None = None
     due_date: date | None = None
     estimated_hours: Decimal | None = Field(None, gt=0)
+    progress: int = Field(0, ge=0, le=100)
 
     @model_validator(mode="after")
     def validate_dates(self):
@@ -59,6 +60,7 @@ class IssueUpdate(BaseModel):
     due_date: date | None = None
     estimated_hours: Decimal | None = Field(None, gt=0)
     actual_hours: Decimal | None = Field(None, gt=0)
+    progress: int | None = Field(None, ge=0, le=100)
     sort_order: int | None = None
 
     @model_validator(mode="after")
@@ -97,6 +99,7 @@ class IssueResponse(BaseModel):
     due_date: date | None
     estimated_hours: Decimal | None
     actual_hours: Decimal | None
+    progress: int
     sort_order: int
     is_archived: bool
     created_at: datetime

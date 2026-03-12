@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useIssue, useUpdateIssue, useDeleteIssue, useIssues } from "@/hooks/useIssues";
 import { useProjectMembers } from "@/hooks/useMembers";
@@ -62,39 +62,28 @@ export default function IssueDetailPage({
   const { data: milestones } = useMilestones(projectId);
   const { data: issues } = useIssues(projectId);
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    issue_type: "",
-    status: "",
-    priority: "",
-    assignee_id: "",
-    milestone_id: "",
-    parent_id: "",
-    start_date: "",
-    due_date: "",
-    estimated_hours: "",
-    actual_hours: "",
-  });
-
-  useEffect(() => {
-    if (issue) {
-      setForm({
-        title: issue.title,
-        description: issue.description || "",
-        issue_type: issue.issue_type,
-        status: issue.status,
-        priority: issue.priority,
-        assignee_id: issue.assignee_id || "",
-        milestone_id: issue.milestone_id || "",
-        parent_id: issue.parent_id || "",
-        start_date: issue.start_date || "",
-        due_date: issue.due_date || "",
-        estimated_hours: issue.estimated_hours?.toString() || "",
-        actual_hours: issue.actual_hours?.toString() || "",
-      });
-    }
-  }, [issue]);
+  const initialForm = useMemo(() => ({
+    title: issue?.title ?? "",
+    description: issue?.description ?? "",
+    issue_type: issue?.issue_type ?? "",
+    status: issue?.status ?? "",
+    priority: issue?.priority ?? "",
+    assignee_id: issue?.assignee_id ?? "",
+    milestone_id: issue?.milestone_id ?? "",
+    parent_id: issue?.parent_id ?? "",
+    start_date: issue?.start_date ?? "",
+    due_date: issue?.due_date ?? "",
+    estimated_hours: issue?.estimated_hours?.toString() ?? "",
+    actual_hours: issue?.actual_hours?.toString() ?? "",
+    progress: issue?.progress?.toString() ?? "0",
+  }), [issue]);
+  const [form, setForm] = useState(initialForm);
+  // Reset form when issue data changes (e.g., after save or initial load)
+  const [prevIssueId, setPrevIssueId] = useState(issue?.id);
+  if (issue?.id !== prevIssueId) {
+    setPrevIssueId(issue?.id);
+    setForm(initialForm);
+  }
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!issue) return <p className="text-muted-foreground">課題が見つかりません</p>;
@@ -103,6 +92,24 @@ export default function IssueDetailPage({
   const assignee = issue.assignee_id ? memberMap.get(issue.assignee_id) : null;
   const parentIssue = issues?.find((i) => i.id === issue.parent_id);
   const childIssues = issues?.filter((i) => i.parent_id === issue.id) || [];
+
+  // Compute descendants to exclude from parent select
+  const descendantIds = new Set<string>();
+  if (issues) {
+    const queue = [issue.id];
+    while (queue.length > 0) {
+      const currentId = queue.pop()!;
+      for (const i of issues) {
+        if (i.parent_id === currentId && !descendantIds.has(i.id)) {
+          descendantIds.add(i.id);
+          queue.push(i.id);
+        }
+      }
+    }
+  }
+  const availableParents = issues?.filter(
+    (i) => i.id !== issueId && !descendantIds.has(i.id)
+  ) || [];
 
   async function handleSave() {
     const data: Record<string, unknown> = {};
@@ -130,6 +137,8 @@ export default function IssueDetailPage({
       data.actual_hours = form.actual_hours
         ? parseFloat(form.actual_hours)
         : null;
+    if (form.progress !== (issue!.progress?.toString() || "0"))
+      data.progress = parseInt(form.progress) || 0;
 
     if (Object.keys(data).length > 0) {
       await updateIssue.mutateAsync({ issueId, data: data as never });
@@ -362,13 +371,11 @@ export default function IssueDetailPage({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">なし</SelectItem>
-                  {issues
-                    ?.filter((i) => i.id !== issueId)
-                    .map((i) => (
-                      <SelectItem key={i.id} value={i.id}>
-                        {i.issue_key}: {i.title}
-                      </SelectItem>
-                    ))}
+                  {availableParents.map((i) => (
+                    <SelectItem key={i.id} value={i.id}>
+                      {i.issue_key}: {i.title}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             ) : parentIssue ? (
@@ -496,6 +503,49 @@ export default function IssueDetailPage({
                 </p>
               )}
             </div>
+          </div>
+
+          {/* Progress */}
+          <div>
+            <label className="text-sm font-medium text-muted-foreground">
+              進捗率
+            </label>
+            {editing ? (
+              <div className="mt-1 flex items-center gap-3">
+                <Input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={form.progress}
+                  onChange={(e) =>
+                    setForm({ ...form, progress: e.target.value })
+                  }
+                  className="h-2 flex-1"
+                />
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={form.progress}
+                  onChange={(e) =>
+                    setForm({ ...form, progress: e.target.value })
+                  }
+                  className="w-20"
+                />
+                <span className="text-sm text-muted-foreground">%</span>
+              </div>
+            ) : (
+              <div className="mt-1 flex items-center gap-3">
+                <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    style={{ width: `${issue.progress}%` }}
+                  />
+                </div>
+                <span className="text-sm font-medium">{issue.progress}%</span>
+              </div>
+            )}
           </div>
 
           {/* Description */}

@@ -2,7 +2,7 @@
 
 import { use, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useProject, useUpdateProject, useDeleteProject, useArchiveProject } from "@/hooks/useProjects";
 import { useIssues } from "@/hooks/useIssues";
 import { useProjectMembers } from "@/hooks/useMembers";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { IssueTable } from "@/components/issues/IssueTable";
 import { KanbanBoard } from "@/components/issues/KanbanBoard";
+import { WorkHoursTable } from "@/components/issues/WorkHoursTable";
 import { MemberList } from "@/components/members/MemberList";
 import { useUsers } from "@/hooks/useUsers";
 
@@ -31,6 +32,8 @@ export default function ProjectDetailPage({
 }) {
   const { projectId } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const defaultTab = searchParams.get("tab") || "issues";
   const { data: project, isLoading: projectLoading } = useProject(projectId);
   const [showArchivedIssues, setShowArchivedIssues] = useState(false);
   const { data: issues, isLoading: issuesLoading } = useIssues(projectId, undefined, showArchivedIssues);
@@ -170,7 +173,7 @@ export default function ProjectDetailPage({
         </DialogContent>
       </Dialog>
 
-      <Tabs defaultValue="issues">
+      <Tabs defaultValue={defaultTab}>
         <TabsList>
           <TabsTrigger value="issues">課題一覧</TabsTrigger>
           <TabsTrigger value="kanban">カンバン</TabsTrigger>
@@ -180,6 +183,7 @@ export default function ProjectDetailPage({
           <TabsTrigger value="milestones" asChild>
             <Link href={`/projects/${projectId}/milestones`}>マイルストーン</Link>
           </TabsTrigger>
+          <TabsTrigger value="work-hours">予実管理</TabsTrigger>
           <TabsTrigger value="members">メンバー</TabsTrigger>
         </TabsList>
         <TabsContent value="issues" className="mt-4">
@@ -229,6 +233,24 @@ export default function ProjectDetailPage({
               issues={issues || []}
               projectId={projectId}
               members={members || []}
+              milestones={milestones || []}
+            />
+          )}
+        </TabsContent>
+        <TabsContent value="work-hours" className="mt-4">
+          <div className="mb-4">
+            <p className="text-sm text-muted-foreground">
+              予定工数と実績工数の対比表
+            </p>
+          </div>
+          {issuesLoading ? (
+            <Skeleton className="h-64 w-full" />
+          ) : (
+            <WorkHoursTable
+              issues={issues || []}
+              projectId={projectId}
+              members={members || []}
+              milestones={milestones || []}
             />
           )}
         </TabsContent>

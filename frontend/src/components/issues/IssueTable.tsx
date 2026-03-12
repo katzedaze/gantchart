@@ -58,7 +58,7 @@ const typeLabels: Record<string, string> = {
   story: "ストーリー",
 };
 
-type SortField = "issue_key" | "title" | "status" | "priority" | "due_date" | "start_date" | "assignee";
+type SortField = "issue_key" | "title" | "status" | "priority" | "due_date" | "start_date" | "assignee" | "progress";
 type SortDirection = "asc" | "desc";
 
 const PAGE_SIZES = [10, 25, 50];
@@ -127,8 +127,9 @@ export function IssueTable({
   projectId,
   members = [],
   milestones = [],
-  showArchived = false,
+  showArchived: _showArchived = false,
 }: IssueTableProps) {
+  void _showArchived;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<SortField>("issue_key");
   const [sortDir, setSortDir] = useState<SortDirection>("asc");
@@ -219,6 +220,9 @@ export function IssueTable({
           cmp = aKana.localeCompare(bKana, "ja");
           break;
         }
+        case "progress":
+          cmp = a.progress - b.progress;
+          break;
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
@@ -311,10 +315,10 @@ export function IssueTable({
     setPage(0);
   }
 
-  function SortIcon({ field }: { field: SortField }) {
+  const sortIcon = (field: SortField) => {
     if (sortField !== field) return <span className="ml-1 text-muted-foreground/40">↕</span>;
     return <span className="ml-1">{sortDir === "asc" ? "↑" : "↓"}</span>;
-  }
+  };
 
   if (issues.length === 0) {
     return (
@@ -467,14 +471,14 @@ export function IssueTable({
                 onClick={() => handleSort("issue_key")}
               >
                 キー
-                <SortIcon field="issue_key" />
+                {sortIcon("issue_key")}
               </TableHead>
               <TableHead
                 className="cursor-pointer select-none"
                 onClick={() => handleSort("title")}
               >
                 タイトル
-                <SortIcon field="title" />
+                {sortIcon("title")}
               </TableHead>
               <TableHead className="w-20">種別</TableHead>
               <TableHead
@@ -482,38 +486,45 @@ export function IssueTable({
                 onClick={() => handleSort("status")}
               >
                 ステータス
-                <SortIcon field="status" />
+                {sortIcon("status")}
               </TableHead>
               <TableHead
                 className="w-20 cursor-pointer select-none"
                 onClick={() => handleSort("priority")}
               >
                 優先度
-                <SortIcon field="priority" />
+                {sortIcon("priority")}
               </TableHead>
               <TableHead
                 className="w-28 cursor-pointer select-none"
                 onClick={() => handleSort("assignee")}
               >
                 担当者
-                <SortIcon field="assignee" />
+                {sortIcon("assignee")}
               </TableHead>
               <TableHead className="w-28">
                 マイルストーン
+              </TableHead>
+              <TableHead
+                className="w-24 cursor-pointer select-none"
+                onClick={() => handleSort("progress")}
+              >
+                進捗
+                {sortIcon("progress")}
               </TableHead>
               <TableHead
                 className="w-28 cursor-pointer select-none"
                 onClick={() => handleSort("start_date")}
               >
                 開始日
-                <SortIcon field="start_date" />
+                {sortIcon("start_date")}
               </TableHead>
               <TableHead
                 className="w-28 cursor-pointer select-none"
                 onClick={() => handleSort("due_date")}
               >
                 期日
-                <SortIcon field="due_date" />
+                {sortIcon("due_date")}
               </TableHead>
               <TableHead className="w-24">操作</TableHead>
             </TableRow>
@@ -614,6 +625,19 @@ export function IssueTable({
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-1.5 w-12 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-emerald-500 transition-all"
+                          style={{ width: `${issue.progress}%` }}
+                        />
+                      </div>
+                      <span className="text-xs tabular-nums text-muted-foreground">
+                        {issue.progress}%
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell className="text-sm">
                     {formatDate(issue.start_date)}

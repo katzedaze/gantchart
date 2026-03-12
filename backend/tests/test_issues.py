@@ -125,3 +125,146 @@ async def test_bulk_update_issues(client: AsyncClient):
     )
     assert response.status_code == 200
     assert len(response.json()) == 2
+
+
+@pytest.mark.asyncio
+async def test_issue_progress_field(client: AsyncClient):
+    project_id = await _create_project(client, "PROG")
+    create_resp = await client.post(
+        f"/projects/{project_id}/issues",
+        json={"title": "Progress task", "issue_type": "task", "progress": 50},
+    )
+    assert create_resp.status_code == 201
+    assert create_resp.json()["progress"] == 50
+
+    issue_id = create_resp.json()["id"]
+    update_resp = await client.patch(f"/issues/{issue_id}", json={"progress": 80})
+    assert update_resp.status_code == 200
+    assert update_resp.json()["progress"] == 80
+
+
+@pytest.mark.asyncio
+async def test_issue_progress_default_zero(client: AsyncClient):
+    project_id = await _create_project(client, "PDEF")
+    resp = await client.post(
+        f"/projects/{project_id}/issues",
+        json={"title": "No progress", "issue_type": "task"},
+    )
+    assert resp.status_code == 201
+    assert resp.json()["progress"] == 0
+
+
+@pytest.mark.asyncio
+async def test_issue_progress_validation(client: AsyncClient):
+    project_id = await _create_project(client, "PVAL")
+    resp = await client.post(
+        f"/projects/{project_id}/issues",
+        json={"title": "Invalid", "issue_type": "task", "progress": 150},
+    )
+    assert resp.status_code == 422
+
+    resp2 = await client.post(
+        f"/projects/{project_id}/issues",
+        json={"title": "Negative", "issue_type": "task", "progress": -10},
+    )
+    assert resp2.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_cannot_set_self_as_parent(client: AsyncClient):
+    project_id = await _create_project(client, "SELF")
+    resp = await client.post(
+        f"/projects/{project_id}/issues",
+        json={"title": "Self ref", "issue_type": "task"},
+    )
+    issue_id = resp.json()["id"]
+    update = await client.patch(f"/issues/{issue_id}", json={"parent_id": issue_id})
+    assert update.status_code == 400
+    assert "自分自身" in update.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_cannot_set_child_as_parent(client: AsyncClient):
+    """A -> B (B is child of A). Setting B as parent of A should fail."""
+    project_id = await _create_project(client, "CHLD")
+    a = await client.post(
+        f"/projects/{project_id}/issues",
+        json={"title": "Parent A", "issue_type": "task"},
+    )
+    a_id = a.json()["id"]
+    b = await client.post(
+        f"/projects/{project_id}/issues",
+        json={"title": "Child B", "issue_type": "task", "parent_id": a_id},
+    )
+    b_id = b.json()["id"]
+
+    # Try to set child B as parent of A -> should fail
+    resp = await client.patch(f"/issues/{a_id}", json={"parent_id": b_id})
+    assert resp.status_code == 400
+    assert "循環参照" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_cannot_set_grandchild_as_parent(client: AsyncClient):
+    """A -> B -> C. Setting C as parent of A should fail."""
+    project_id = await _create_project(client, "GRCH")
+    a = await client.post(
+        f"/projects/{project_id}/issues",
+        json={"title": "A", "issue_type": "task"},
+    )
+    a_id = a.json()["id"]
+    b = await client.post(
+        f"/projects/{project_id}/issues",
+        json={"title": "B", "issue_type": "task", "parent_id": a_id},
+    )
+    b_id = b.json()["id"]
+    c = await client.post(
+        f"/projects/{project_id}/issues",
+        json={"title": "C", "issue_type": "task", "parent_id": b_id},
+    )
+    c_id = c.json()["id"]
+
+    # Try to set grandchild C as parent of A
+    resp = await client.patch(f"/issues/{a_id}", json={"parent_id": c_id})
+    assert resp.status_code == 400
+    assert "循環参照" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_valid_parent_assignment(client: AsyncClient):
+    """Setting an unrelated issue as parent should succeed."""
+    project_id = await _create_project(client, "VPAR")
+    a = await client.post(
+        f"/projects/{project_id}/issues",
+        json={"title": "A", "issue_type": "task"},
+    )
+    b = await client.post(
+        f"/projects/{project_id}/issues",
+        json={"title": "B", "issue_type": "task"},
+    )
+    a_id = a.json()["id"]
+    b_id = b.json()["id"]
+
+    resp = await client.patch(f"/issues/{b_id}", json={"parent_id": a_id})
+    assert resp.status_code == 200
+    assert resp.json()["parent_id"] == a_id
+
+
+@pytest.mark.asyncio
+async def test_can_remove_parent(client: AsyncClient):
+    """Setting parent_id to null should succeed."""
+    project_id = await _create_project(client, "RPAR")
+    a = await client.post(
+        f"/projects/{project_id}/issues",
+        json={"title": "Parent", "issue_type": "task"},
+    )
+    a_id = a.json()["id"]
+    b = await client.post(
+        f"/projects/{project_id}/issues",
+        json={"title": "Child", "issue_type": "task", "parent_id": a_id},
+    )
+    b_id = b.json()["id"]
+
+    resp = await client.patch(f"/issues/{b_id}", json={"parent_id": None})
+    assert resp.status_code == 200
+    assert resp.json()["parent_id"] is None

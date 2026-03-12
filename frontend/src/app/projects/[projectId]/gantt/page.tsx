@@ -49,6 +49,9 @@ export default function GanttPage({
           <TabsTrigger value="milestones" asChild>
             <Link href={`/projects/${projectId}/milestones`}>マイルストーン</Link>
           </TabsTrigger>
+          <TabsTrigger value="work-hours" asChild>
+            <Link href={`/projects/${projectId}?tab=work-hours`}>予実管理</Link>
+          </TabsTrigger>
           <TabsTrigger value="members" asChild>
             <Link href={`/projects/${projectId}`}>メンバー</Link>
           </TabsTrigger>

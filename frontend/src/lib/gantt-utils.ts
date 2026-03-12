@@ -87,3 +87,72 @@ export function formatDate(date: string | null): string {
   if (!date) return "-";
   return new Date(date).toLocaleDateString("ja-JP");
 }
+
+export type ScheduleStatus = "completed" | "on_track" | "at_risk" | "overdue" | "not_started";
+
+/** Task is "on track" if progress >= 70% of expected progress based on elapsed time */
+const SCHEDULE_TOLERANCE = 0.7;
+
+export function getScheduleStatus(
+  issue: {
+    status: string;
+    progress: number;
+    start_date: string | null;
+    due_date: string | null;
+  },
+  now: Date = new Date()
+): ScheduleStatus {
+  if (issue.status === "resolved" || issue.status === "closed") {
+    return "completed";
+  }
+
+  if (!issue.start_date || !issue.due_date) {
+    return issue.status === "open" ? "not_started" : "on_track";
+  }
+
+  const start = new Date(issue.start_date);
+  const end = new Date(issue.due_date);
+  const totalDays = Math.max(1, (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  const elapsedDays = (now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+
+  if (elapsedDays < 0) {
+    return "not_started";
+  }
+
+  const elapsedRatio = Math.min(elapsedDays / totalDays, 1);
+  const expectedProgress = elapsedRatio * 100;
+
+  if (now > end && issue.progress < 100) {
+    return "overdue";
+  }
+
+  if (issue.progress >= expectedProgress * SCHEDULE_TOLERANCE) {
+    return "on_track";
+  }
+
+  return "at_risk";
+}
+
+export const scheduleStatusColors: Record<ScheduleStatus, { bar: string; fill: string }> = {
+  completed: { bar: "bg-gray-400", fill: "bg-gray-500" },
+  on_track: { bar: "bg-emerald-300", fill: "bg-emerald-500" },
+  at_risk: { bar: "bg-amber-300", fill: "bg-amber-500" },
+  overdue: { bar: "bg-red-300", fill: "bg-red-500" },
+  not_started: { bar: "bg-blue-300", fill: "bg-blue-500" },
+};
+
+export const scheduleStatusLabels: Record<ScheduleStatus, string> = {
+  completed: "完了",
+  on_track: "順調",
+  at_risk: "遅延気味",
+  overdue: "期限超過",
+  not_started: "未着手",
+};
+
+export const scheduleStatusDescriptions: Record<ScheduleStatus, string> = {
+  completed: "ステータスが「解決済み」または「完了」の課題",
+  on_track: "進捗率が経過時間に対して70%以上で順調に進行中",
+  at_risk: "進捗率が経過時間に対して70%未満で遅れが発生",
+  overdue: "期日を過ぎても完了していない課題",
+  not_started: "未着手、または開始日前の課題",
+};

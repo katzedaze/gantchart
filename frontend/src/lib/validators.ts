@@ -27,6 +27,7 @@ export const issueCreateSchema = z
     start_date: z.string().optional(),
     due_date: z.string().optional(),
     estimated_hours: z.number().positive().optional(),
+    progress: z.number().int().min(0).max(100).default(0),
   })
   .refine(
     (data) => {
@@ -57,6 +58,7 @@ export const issueUpdateSchema = z
     due_date: z.string().optional().nullable(),
     estimated_hours: z.number().positive().optional().nullable(),
     actual_hours: z.number().positive().optional().nullable(),
+    progress: z.number().int().min(0).max(100).optional(),
   })
   .refine(
     (data) => {
