@@ -42,6 +42,7 @@ const tools = [
   { href: "/tools/qr-generator", title: "QR Code" },
   { href: "/tools/dummy-image", title: "Dummy Image" },
   { href: "/tools/image-whiteout", title: "Image Whiteout" },
+  { href: "/tools/skill-checker", title: "Skill Checker" },
 ];
 
 export default function Home() {
