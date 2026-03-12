@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/projects", label: "プロジェクト" },
   { href: "/members", label: "メンバー管理" },
+  { href: "/tools", label: "Tools" },
 ];
 
 export function Header() {
