@@ -9,7 +9,7 @@ from slowapi.util import get_remote_address
 
 from app.auth import verify_api_key
 from app.config import settings
-from app.routers import comments, dependencies, gantt, issues, milestones, projects, users
+from app.routers import comments, dependencies, gantt, issues, milestones, projects, skill_progress, users
 
 limiter = Limiter(key_func=get_remote_address, default_limits=[settings.rate_limit])
 
@@ -27,7 +27,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "X-API-Key", "Authorization"],
     expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
 )
@@ -39,6 +39,7 @@ app.include_router(milestones.router, tags=["milestones"])
 app.include_router(dependencies.router, tags=["dependencies"])
 app.include_router(gantt.router, tags=["gantt"])
 app.include_router(comments.router, tags=["comments"])
+app.include_router(skill_progress.router, prefix="/users", tags=["skill-progress"])
 
 # Serve uploaded files
 upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
