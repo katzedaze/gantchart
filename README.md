@@ -2,6 +2,52 @@
 
 Backlog に類似したプロジェクト管理アプリケーション。ガントチャート機能を中心に、プロジェクト/課題管理、タスク依存関係、マイルストーン、ユーザーアサイン、開発者向けツール群を備える。
 
+## スクリーンショット
+
+### ガントチャート
+
+![ガントチャート](docs/images/gantt-chart.png)
+
+### 開発者ツール一覧
+
+![開発者ツール一覧](docs/images/tools-top.png)
+
+### スキルチェッカー
+
+![スキルチェッカー](docs/images/skill-checker.png)
+
+### スキルチェッカー詳細
+
+![スキルチェッカー詳細](docs/images/skill-checker-detail.png)
+
+### JSON Formatter
+
+![JSON Formatter](docs/images/json-formatter.png)
+
+### Base64 Encoder / Decoder
+
+![Base64 Encoder / Decoder](docs/images/base64.png)
+
+### JWT Decoder
+
+![JWT Decoder](docs/images/jwt-decoder.png)
+
+### Case Converter
+
+![Case Converter](docs/images/case-converter.png)
+
+### QR Code Generator
+
+![QR Code Generator](docs/images/qr-generator.png)
+
+### Dummy Image Generator
+
+![Dummy Image Generator](docs/images/dummy-image.png)
+
+### Image Whiteout
+
+![Image Whiteout](docs/images/image-whiteout.png)
+
 ## 技術スタック
 
 | レイヤー | 技術 | バージョン |
@@ -240,7 +286,7 @@ bun run dev
 | `GET` | `/issues/{issue_id}/dependencies` | 課題の依存関係取得 |
 | `DELETE` | `/dependencies/{dependency_id}` | 依存関係削除 |
 
-### ガントチャート
+### ガントチャート API
 
 | メソッド | パス | 説明 |
 | -------- | ---- | ---- |
@@ -399,7 +445,7 @@ gantchart-v2/
 - マイルストーン管理
 - コメント（Markdown 対応）と添付ファイル
 
-### スキルチェッカー
+### スキルチェッカー機能
 
 - [roadmap.sh](https://roadmap.sh/) のロードマップを日本語で表示（31種類対応）
 - トピックごとの学習状態トラッキング（未学習 → 学習中 → 習得済み）
