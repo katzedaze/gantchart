@@ -37,6 +37,6 @@ class Issue(Base):
     estimated_hours: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
     actual_hours: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())

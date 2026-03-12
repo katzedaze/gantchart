@@ -3,7 +3,6 @@ import { apiClient } from "@/lib/api-client";
 
 export interface SkillProgressItem {
   id: string;
-  user_id: string;
   roadmap_slug: string;
   node_id: string;
   level: string;
@@ -15,43 +14,26 @@ interface BulkUpsertPayload {
   items: { node_id: string; level: string }[];
 }
 
-const USER_ID_KEY = "skill-checker-user-id";
-
-export function getStoredUserId(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(USER_ID_KEY);
-}
-
-export function setStoredUserId(userId: string) {
-  localStorage.setItem(USER_ID_KEY, userId);
-}
-
-export function useSkillProgress(userId: string | null, roadmapSlug?: string) {
+export function useSkillProgress(roadmapSlug?: string) {
   return useQuery<SkillProgressItem[]>({
-    queryKey: ["skill-progress", userId, roadmapSlug],
+    queryKey: ["skill-progress", roadmapSlug],
     queryFn: () => {
       const params = roadmapSlug ? `?roadmap_slug=${roadmapSlug}` : "";
       return apiClient.get<SkillProgressItem[]>(
-        `/users/${userId}/skill-progress${params}`
+        `/skill-progress/${params}`
       );
     },
-    enabled: !!userId,
   });
 }
 
 export function useUpsertSkillProgress() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      userId,
-      data,
-    }: {
-      userId: string;
-      data: BulkUpsertPayload;
-    }) => apiClient.put<SkillProgressItem[]>(`/users/${userId}/skill-progress`, data),
-    onSuccess: (_data, variables) => {
+    mutationFn: (data: BulkUpsertPayload) =>
+      apiClient.put<SkillProgressItem[]>(`/skill-progress/`, data),
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["skill-progress", variables.userId],
+        queryKey: ["skill-progress"],
       });
     },
   });
@@ -60,19 +42,13 @@ export function useUpsertSkillProgress() {
 export function useDeleteSkillProgress() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      userId,
-      roadmapSlug,
-    }: {
-      userId: string;
-      roadmapSlug?: string;
-    }) => {
+    mutationFn: (roadmapSlug?: string) => {
       const params = roadmapSlug ? `?roadmap_slug=${roadmapSlug}` : "";
-      return apiClient.delete(`/users/${userId}/skill-progress${params}`);
+      return apiClient.delete(`/skill-progress/${params}`);
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["skill-progress", variables.userId],
+        queryKey: ["skill-progress"],
       });
     },
   });

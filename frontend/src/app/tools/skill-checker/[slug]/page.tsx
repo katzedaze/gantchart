@@ -20,11 +20,8 @@ import {
   useSkillProgress,
   useUpsertSkillProgress,
   useDeleteSkillProgress,
-  getStoredUserId,
-  setStoredUserId,
   type SkillProgressItem,
 } from "@/hooks/useSkillProgress";
-import { useUsers } from "@/hooks/useUsers";
 import type {
   RoadmapShDetail,
   RoadmapShTopic,
@@ -143,7 +140,6 @@ function TopicDescription({
           setTranslating(true);
           try {
             const { translateText } = await import("@/lib/translate");
-            // Strip markdown for cleaner translation, keep structure
             const cleanText = data.description
               .split("\n")
               .filter((line) => line.trim())
@@ -191,13 +187,11 @@ function TopicDescription({
     );
   }
 
-  // Prepare original text lines
   const originalLines = topic.description
     .split("\n")
     .filter((line) => line.trim())
     .slice(0, 20);
 
-  // Prepare translated lines
   const translatedLines = translatedDesc
     ? translatedDesc.split("\n").filter((line) => line.trim())
     : null;
@@ -207,7 +201,6 @@ function TopicDescription({
 
   return (
     <div className="mt-2 space-y-2 rounded-md bg-muted/30 p-3 text-sm">
-      {/* Language toggle */}
       <div className="flex items-center justify-end gap-1">
         {translating && (
           <span className="text-xs text-muted-foreground animate-pulse">
@@ -317,7 +310,6 @@ function TopicItem({
       <div
         className={`group flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50 ${config.bg}`}
       >
-        {/* Status toggle button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -329,7 +321,6 @@ function TopicItem({
           {config.icon}
         </button>
 
-        {/* Label - click to expand description */}
         <button
           onClick={() => setExpanded(!expanded)}
           className="flex-1 text-left text-sm"
@@ -358,7 +349,6 @@ function TopicItem({
           )}
         </button>
 
-        {/* Bulk action buttons - visible on hover for items with children */}
         {hasChildren && (
           <span className="hidden shrink-0 gap-0.5 group-hover:flex">
             <button
@@ -394,12 +384,10 @@ function TopicItem({
           </span>
         )}
 
-        {/* Status label */}
         <span className={`shrink-0 text-xs font-medium ${config.color}`}>
           {config.label}
         </span>
 
-        {/* Expand indicator */}
         <span
           className="shrink-0 cursor-pointer text-xs text-muted-foreground transition-transform"
           onClick={() => setExpanded(!expanded)}
@@ -414,7 +402,6 @@ function TopicItem({
         </div>
       )}
 
-      {/* Children */}
       {hasChildren && (
         <div className="mt-0.5">
           {node.children.map((child) => (
@@ -459,18 +446,8 @@ export default function RoadmapDetailPage() {
   const [labelTranslations, setLabelTranslations] = useState<Record<string, string>>({});
   const translatingLabels = useRef(false);
 
-  // User selection: use stored userId or pick first user
-  const [userId, setUserId] = useState<string | null>(getStoredUserId);
-  const { data: users } = useUsers(false);
-  useEffect(() => {
-    if (!userId && users && users.length > 0) {
-      setUserId(users[0].id);
-      setStoredUserId(users[0].id);
-    }
-  }, [userId, users]);
-
-  // Fetch progress from DB
-  const { data: progressItems } = useSkillProgress(userId, slug);
+  // Fetch progress from DB (no userId needed)
+  const { data: progressItems } = useSkillProgress(slug);
   const upsertMutation = useUpsertSkillProgress();
   const deleteMutation = useDeleteSkillProgress();
 
@@ -505,7 +482,6 @@ export default function RoadmapDetailPage() {
                 .map((n) => [n.id, n.data.label])
             );
 
-            // Collect unique labels
             const labelsToTranslate: { id: string; label: string }[] = [];
             for (const id of allIds) {
               const label = nodeMap.get(id);
@@ -514,7 +490,6 @@ export default function RoadmapDetailPage() {
 
             if (labelsToTranslate.length > 0) {
               const { translateText } = await import("@/lib/translate");
-              // Batch translate: join labels with separator
               const separator = " ||| ";
               const joined = labelsToTranslate.map((l) => l.label).join(separator);
               const translated = await translateText(joined, "ja", "en");
@@ -549,7 +524,6 @@ export default function RoadmapDetailPage() {
 
   const toggleSkill = useCallback(
     (nodeKey: string) => {
-      if (!userId) return;
       const nodeId = nodeKey.replace(`${slug}:`, "");
       setProgress((prev) => {
         const current: SkillLevel = prev[nodeKey] || "none";
@@ -558,23 +532,18 @@ export default function RoadmapDetailPage() {
         if (next === "none") {
           delete updated[nodeKey];
         }
-        // Persist to DB
         upsertMutation.mutate({
-          userId,
-          data: {
-            roadmap_slug: slug,
-            items: [{ node_id: nodeId, level: next }],
-          },
+          roadmap_slug: slug,
+          items: [{ node_id: nodeId, level: next }],
         });
         return updated;
       });
     },
-    [userId, slug, upsertMutation]
+    [slug, upsertMutation]
   );
 
   const bulkSetSkills = useCallback(
     (nodeIds: string[], level: SkillLevel) => {
-      if (!userId) return;
       setProgress((prev) => {
         const updated = { ...prev };
         for (const id of nodeIds) {
@@ -587,20 +556,15 @@ export default function RoadmapDetailPage() {
         }
         return updated;
       });
-      // Persist to DB in one batch
       upsertMutation.mutate({
-        userId,
-        data: {
-          roadmap_slug: slug,
-          items: nodeIds.map((id) => ({ node_id: id, level })),
-        },
+        roadmap_slug: slug,
+        items: nodeIds.map((id) => ({ node_id: id, level })),
       });
     },
-    [userId, slug, upsertMutation]
+    [slug, upsertMutation]
   );
 
   const handleReset = useCallback(() => {
-    if (!userId) return;
     setProgress((prev) => {
       const updated = { ...prev };
       const allIds = flattenTree(tree);
@@ -609,8 +573,8 @@ export default function RoadmapDetailPage() {
       }
       return updated;
     });
-    deleteMutation.mutate({ userId, roadmapSlug: slug });
-  }, [tree, slug, userId, deleteMutation]);
+    deleteMutation.mutate(slug);
+  }, [tree, slug, deleteMutation]);
 
   const stats = useMemo(() => {
     const allIds = flattenTree(tree);

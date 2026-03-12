@@ -16,7 +16,6 @@ class SkillProgressBulkUpsert(BaseModel):
 
 class SkillProgressResponse(BaseModel):
     id: uuid.UUID
-    user_id: uuid.UUID
     roadmap_slug: str
     node_id: str
     level: str

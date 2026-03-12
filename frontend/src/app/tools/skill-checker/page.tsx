@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useSyncExternalStore, useMemo } from "react";
+import { useState, useEffect, useSyncExternalStore, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,18 +8,18 @@ import { popularRoadmaps, type RoadmapMeta } from "./roadmap-meta";
 import { fetchRoadmapDetail, buildTopicTree, flattenTree } from "./roadmap-api";
 import {
   useSkillProgress,
+  useUpsertSkillProgress,
   useDeleteSkillProgress,
-  getStoredUserId,
-  setStoredUserId,
   type SkillProgressItem,
 } from "@/hooks/useSkillProgress";
-import { useUsers } from "@/hooks/useUsers";
 import type { SkillLevel } from "./types";
 
 const TOPIC_COUNT_KEY = "skill-checker-topic-counts";
+const TOPIC_IDS_KEY = "skill-checker-topic-ids";
 
 type Progress = Record<string, SkillLevel>;
 type TopicCounts = Record<string, number>;
+type TopicIdsMap = Record<string, string[]>;
 
 function progressItemsToMap(items: SkillProgressItem[]): Progress {
   const map: Progress = {};
@@ -41,6 +41,20 @@ function loadTopicCounts(): TopicCounts {
 
 function saveTopicCounts(counts: TopicCounts) {
   localStorage.setItem(TOPIC_COUNT_KEY, JSON.stringify(counts));
+}
+
+function loadTopicIds(): TopicIdsMap {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(TOPIC_IDS_KEY);
+    return raw ? (JSON.parse(raw) as TopicIdsMap) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveTopicIds(ids: TopicIdsMap) {
+  localStorage.setItem(TOPIC_IDS_KEY, JSON.stringify(ids));
 }
 
 function ProgressBar({
@@ -95,10 +109,16 @@ function RoadmapCard({
   meta,
   apiProgress,
   topicCount,
+  topicIds,
+  onBulkSet,
+  isMutating,
 }: {
   meta: RoadmapMeta;
   apiProgress: Progress;
   topicCount: number | undefined;
+  topicIds: string[] | undefined;
+  onBulkSet: (slug: string, nodeIds: string[], level: SkillLevel) => void;
+  isMutating: boolean;
 }) {
   const prefix = `${meta.slug}:`;
   const entries = Object.entries(apiProgress).filter(([k]) =>
@@ -109,11 +129,12 @@ function RoadmapCard({
   const total = topicCount ?? 0;
   const pct =
     total > 0 ? Math.round(((done + learning * 0.5) / total) * 100) : 0;
+  const hasIds = topicIds && topicIds.length > 0;
 
   return (
-    <Link href={`/tools/skill-checker/${meta.slug}`} className="text-left">
-      <Card className="h-full transition-all hover:shadow-md hover:border-primary/30">
-        <CardContent className="p-4">
+    <Card className="h-full transition-all hover:shadow-md hover:border-primary/30">
+      <CardContent className="p-4">
+        <Link href={`/tools/skill-checker/${meta.slug}`} className="text-left block">
           <div className="mb-2 flex items-center gap-2">
             <span className="text-2xl">{meta.icon}</span>
             <div className="min-w-0 flex-1">
@@ -143,32 +164,54 @@ function RoadmapCard({
           <p className="mt-1 text-xs text-muted-foreground">
             {done}/{total > 0 ? total : "—"} スキル習得
           </p>
-        </CardContent>
-      </Card>
-    </Link>
+        </Link>
+
+        {/* Bulk action buttons */}
+        {hasIds && (
+          <div className="mt-2 flex gap-1 border-t pt-2">
+            <button
+              onClick={() => onBulkSet(meta.slug, topicIds, "done")}
+              disabled={isMutating}
+              className="flex-1 rounded px-2 py-1 text-[11px] font-medium text-green-700 bg-green-100 hover:bg-green-200 dark:text-green-400 dark:bg-green-900/30 dark:hover:bg-green-900/50 disabled:opacity-50"
+              title="すべて習得済みにする"
+            >
+              全て習得済み
+            </button>
+            <button
+              onClick={() => onBulkSet(meta.slug, topicIds, "learning")}
+              disabled={isMutating}
+              className="flex-1 rounded px-2 py-1 text-[11px] font-medium text-yellow-700 bg-yellow-100 hover:bg-yellow-200 dark:text-yellow-400 dark:bg-yellow-900/30 dark:hover:bg-yellow-900/50 disabled:opacity-50"
+              title="すべて学習中にする"
+            >
+              全て学習中
+            </button>
+            <button
+              onClick={() => onBulkSet(meta.slug, topicIds, "none")}
+              disabled={isMutating}
+              className="flex-1 rounded px-2 py-1 text-[11px] font-medium text-muted-foreground bg-muted hover:bg-muted/80 disabled:opacity-50"
+              title="すべてリセットする"
+            >
+              リセット
+            </button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
 export default function SkillCheckerPage() {
   const [topicCounts, setTopicCounts] = useState<TopicCounts>({});
+  const [topicIds, setTopicIds] = useState<TopicIdsMap>({});
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
     () => false
   );
 
-  // User selection: use stored userId or pick first user
-  const [userId, setUserId] = useState<string | null>(getStoredUserId);
-  const { data: users } = useUsers(false);
-  useEffect(() => {
-    if (!userId && users && users.length > 0) {
-      setUserId(users[0].id);
-      setStoredUserId(users[0].id);
-    }
-  }, [userId, users]);
-
-  // Fetch all progress from DB
-  const { data: progressItems } = useSkillProgress(userId);
+  // Fetch all progress from DB (no userId needed)
+  const { data: progressItems } = useSkillProgress();
+  const upsertMutation = useUpsertSkillProgress();
   const deleteMutation = useDeleteSkillProgress();
 
   const apiProgress = useMemo(
@@ -179,9 +222,10 @@ export default function SkillCheckerPage() {
   useEffect(() => {
     if (!mounted) return;
     setTopicCounts(loadTopicCounts());
+    setTopicIds(loadTopicIds());
   }, [mounted]);
 
-  // Fetch topic counts for roadmaps that don't have a cached count yet
+  // Fetch topic counts and IDs for roadmaps that don't have a cached count yet
   useEffect(() => {
     if (!mounted) return;
 
@@ -190,10 +234,9 @@ export default function SkillCheckerPage() {
 
     let cancelled = false;
 
-    // Fetch in small batches to avoid overwhelming the API
     async function fetchCounts() {
-      const updated = { ...topicCounts };
-      // Process 3 at a time
+      const updatedCounts = { ...topicCounts };
+      const updatedIds = { ...topicIds };
       for (let i = 0; i < missing.length; i += 3) {
         if (cancelled) break;
         const batch = missing.slice(i, i + 3);
@@ -201,17 +244,21 @@ export default function SkillCheckerPage() {
           batch.map(async (r) => {
             const detail = await fetchRoadmapDetail(r.slug);
             const tree = buildTopicTree(detail.nodes, detail.edges);
-            return { slug: r.slug, count: flattenTree(tree).length };
+            const ids = flattenTree(tree);
+            return { slug: r.slug, count: ids.length, ids };
           })
         );
         for (const result of results) {
           if (result.status === "fulfilled") {
-            updated[result.value.slug] = result.value.count;
+            updatedCounts[result.value.slug] = result.value.count;
+            updatedIds[result.value.slug] = result.value.ids;
           }
         }
         if (!cancelled) {
-          setTopicCounts({ ...updated });
-          saveTopicCounts(updated);
+          setTopicCounts({ ...updatedCounts });
+          saveTopicCounts(updatedCounts);
+          setTopicIds({ ...updatedIds });
+          saveTopicIds(updatedIds);
         }
       }
     }
@@ -220,7 +267,6 @@ export default function SkillCheckerPage() {
     return () => {
       cancelled = true;
     };
-    // Only run once on mount, not when topicCounts changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted]);
 
@@ -242,9 +288,22 @@ export default function SkillCheckerPage() {
     return { total, done, learning };
   }, [apiProgress, topicCounts]);
 
+  const handleBulkSet = useCallback(
+    (slug: string, nodeIds: string[], level: SkillLevel) => {
+      if (level === "none") {
+        deleteMutation.mutate(slug);
+      } else {
+        upsertMutation.mutate({
+          roadmap_slug: slug,
+          items: nodeIds.map((id) => ({ node_id: id, level })),
+        });
+      }
+    },
+    [upsertMutation, deleteMutation]
+  );
+
   const handleResetAll = () => {
-    if (!userId) return;
-    deleteMutation.mutate({ userId });
+    deleteMutation.mutate(undefined);
   };
 
   if (!mounted) {
@@ -297,6 +356,9 @@ export default function SkillCheckerPage() {
             meta={meta}
             apiProgress={apiProgress}
             topicCount={topicCounts[meta.slug]}
+            topicIds={topicIds[meta.slug]}
+            onBulkSet={handleBulkSet}
+            isMutating={upsertMutation.isPending || deleteMutation.isPending}
           />
         ))}
       </div>

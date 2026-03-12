@@ -17,7 +17,7 @@ class Project(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     key: Mapped[str] = mapped_column(String(10), unique=True, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
@@ -35,7 +35,7 @@ class ProjectMember(Base):
         PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     role: Mapped[str] = mapped_column(String(20), nullable=False, default="member")
-    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     project: Mapped["Project"] = relationship(back_populates="members")

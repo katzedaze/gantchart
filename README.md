@@ -209,13 +209,13 @@ bun run dev
 | `POST` | `/users/bulk-delete` | ユーザー一括削除（最大100件、body: `{ids: [...]}`) |
 | `POST` | `/users/bulk-archive` | ユーザー一括アーカイブ（最大100件、body: `{ids: [...]}`) |
 
-### スキルプログレス `/users/{user_id}/skill-progress`
+### スキルプログレス `/skill-progress`
 
 | メソッド | パス | 説明 |
 | -------- | ---- | ---- |
-| `GET` | `/users/{user_id}/skill-progress` | スキル進捗取得（`?roadmap_slug=` でフィルタ可） |
-| `PUT` | `/users/{user_id}/skill-progress` | スキル進捗の一括更新（upsert） |
-| `DELETE` | `/users/{user_id}/skill-progress` | スキル進捗の削除（`?roadmap_slug=` でフィルタ可） |
+| `GET` | `/skill-progress/` | スキル進捗取得（`?roadmap_slug=` でフィルタ可） |
+| `PUT` | `/skill-progress/` | スキル進捗の一括更新（upsert） |
+| `DELETE` | `/skill-progress/` | スキル進捗の削除（`?roadmap_slug=` でフィルタ可） |
 
 ### プロジェクト `/projects`
 
@@ -391,7 +391,8 @@ gantchart-v2/
 │       ├── test_milestones.py
 │       ├── test_dependencies.py
 │       ├── test_gantt.py
-│       └── test_cors.py
+│       ├── test_cors.py
+│       └── test_skill_progress.py
 │
 ├── frontend/
 │   ├── Dockerfile
@@ -416,9 +417,14 @@ gantchart-v2/
 │       ├── lib/
 │       │   ├── gantt-utils.test.ts
 │       │   └── validators.test.ts
-│       └── components/
-│           └── issues/
-│               └── IssueTable.test.tsx
+│       ├── components/
+│       │   └── issues/
+│       │       └── IssueTable.test.tsx
+│       ├── hooks/
+│       │   └── useSkillProgress.test.ts
+│       └── tools/
+│           └── skill-checker/
+│               └── roadmap-api.test.ts
 │
 └── docs/
     ├── PLAN.md                  # 実装計画（9フェーズ）
@@ -449,10 +455,11 @@ gantchart-v2/
 
 - [roadmap.sh](https://roadmap.sh/) のロードマップを日本語で表示（31種類対応）
 - トピックごとの学習状態トラッキング（未学習 → 学習中 → 習得済み）
+- ロードマップ単位の一括変更ボタン（全習得済み / 全学習中 / リセット）— トップページから操作可能
 - カテゴリ単位の一括変更ボタン（全習得済み / 全学習中 / 全リセット）
 - 進捗率とプログレスバーの表示
 - トピック説明の自動日本語翻訳
-- 進捗データの DB 永続化（デバイス間同期可能）
+- 進捗データの DB 永続化（ログイン不要、ユーザー ID に依存しないシンプル設計）
 
 ### 開発者ツール
 
@@ -490,6 +497,7 @@ pytest tests/test_dependencies.py -v
 | `test_dependencies.py` | 作成、自己依存、循環検知、削除 |
 | `test_gantt.py` | 空プロジェクト、データ形状、依存関係 |
 | `test_cors.py` | CORS ヘッダー、許可オリジン |
+| `test_skill_progress.py` | スキル進捗 CRUD、一括 upsert、ロードマップフィルタ、バリデーション |
 
 ### フロントエンドテスト
 
@@ -511,6 +519,8 @@ bun run test
 | `gantt-utils.test.ts` | dateToPixel, pixelToDate, バー計算、日付範囲 |
 | `validators.test.ts` | プロジェクト、課題、マイルストーンスキーマバリデーション |
 | `IssueTable.test.tsx` | レンダリング、バッジ、空状態 |
+| `useSkillProgress.test.ts` | API コントラクト、エンドポイントパス、レベルバリデーション |
+| `roadmap-api.test.ts` | トピックツリー構築、フラット化、親子関係、ソート |
 
 ## CI/CD
 

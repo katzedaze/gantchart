@@ -1,5 +1,3 @@
-import uuid
-
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,14 +9,13 @@ class SkillProgressRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_by_user(self, user_id: uuid.UUID) -> list[SkillProgress]:
-        result = await self.session.scalars(select(SkillProgress).where(SkillProgress.user_id == user_id))
+    async def get_all(self) -> list[SkillProgress]:
+        result = await self.session.scalars(select(SkillProgress))
         return list(result.all())
 
-    async def get_by_user_and_roadmap(self, user_id: uuid.UUID, roadmap_slug: str) -> list[SkillProgress]:
+    async def get_by_roadmap(self, roadmap_slug: str) -> list[SkillProgress]:
         result = await self.session.scalars(
             select(SkillProgress).where(
-                SkillProgress.user_id == user_id,
                 SkillProgress.roadmap_slug == roadmap_slug,
             )
         )
@@ -26,7 +23,6 @@ class SkillProgressRepository:
 
     async def bulk_upsert(
         self,
-        user_id: uuid.UUID,
         roadmap_slug: str,
         items: list[dict],
     ) -> list[SkillProgress]:
@@ -41,7 +37,6 @@ class SkillProgressRepository:
         if to_delete:
             await self.session.execute(
                 delete(SkillProgress).where(
-                    SkillProgress.user_id == user_id,
                     SkillProgress.roadmap_slug == roadmap_slug,
                     SkillProgress.node_id.in_(to_delete),
                 )
@@ -51,7 +46,6 @@ class SkillProgressRepository:
         if to_upsert:
             values = [
                 {
-                    "user_id": user_id,
                     "roadmap_slug": roadmap_slug,
                     "node_id": item["node_id"],
                     "level": item["level"],
@@ -61,23 +55,22 @@ class SkillProgressRepository:
 
             stmt = pg_insert(SkillProgress).values(values)
             stmt = stmt.on_conflict_do_update(
-                constraint="uq_skill_progress",
+                constraint="uq_skill_progress_roadmap_node",
                 set_={"level": stmt.excluded.level},
             )
             await self.session.execute(stmt)
 
         await self.session.flush()
-        return await self.get_by_user_and_roadmap(user_id, roadmap_slug)
+        return await self.get_by_roadmap(roadmap_slug)
 
-    async def delete_by_user_and_roadmap(self, user_id: uuid.UUID, roadmap_slug: str) -> None:
+    async def delete_by_roadmap(self, roadmap_slug: str) -> None:
         await self.session.execute(
             delete(SkillProgress).where(
-                SkillProgress.user_id == user_id,
                 SkillProgress.roadmap_slug == roadmap_slug,
             )
         )
         await self.session.flush()
 
-    async def delete_all_by_user(self, user_id: uuid.UUID) -> None:
-        await self.session.execute(delete(SkillProgress).where(SkillProgress.user_id == user_id))
+    async def delete_all(self) -> None:
+        await self.session.execute(delete(SkillProgress))
         await self.session.flush()

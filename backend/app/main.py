@@ -39,7 +39,7 @@ app.include_router(milestones.router, tags=["milestones"])
 app.include_router(dependencies.router, tags=["dependencies"])
 app.include_router(gantt.router, tags=["gantt"])
 app.include_router(comments.router, tags=["comments"])
-app.include_router(skill_progress.router, prefix="/users", tags=["skill-progress"])
+app.include_router(skill_progress.router, prefix="/skill-progress", tags=["skill-progress"])
 
 # Serve uploaded files
 upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
