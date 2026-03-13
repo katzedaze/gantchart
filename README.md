@@ -4,49 +4,79 @@ Backlog に類似したプロジェクト管理アプリケーション。ガン
 
 ## スクリーンショット
 
-### ガントチャート
+### プロジェクト管理
+
+#### ホーム
+
+![ホーム](docs/images/home.png)
+
+#### プロジェクト一覧
+
+![プロジェクト一覧](docs/images/projects.png)
+
+#### プロジェクト詳細（課題一覧）
+
+![プロジェクト詳細](docs/images/project-detail.png)
+
+#### カンバンボード
+
+![カンバンボード](docs/images/kanban.png)
+
+#### ガントチャート
 
 ![ガントチャート](docs/images/gantt-chart.png)
 
-### 開発者ツール一覧
+#### 予実管理
+
+![予実管理](docs/images/work-hours.png)
+
+#### メンバー管理
+
+![メンバー管理](docs/images/members.png)
+
+### 開発者ツール
+
+#### 開発者ツール一覧
 
 ![開発者ツール一覧](docs/images/tools-top.png)
 
-### スキルチェッカー
-
-![スキルチェッカー](docs/images/skill-checker.png)
-
-### スキルチェッカー詳細
-
-![スキルチェッカー詳細](docs/images/skill-checker-detail.png)
-
-### JSON Formatter
+#### JSON Formatter
 
 ![JSON Formatter](docs/images/json-formatter.png)
 
-### Base64 Encoder / Decoder
+#### Base64 Encoder / Decoder
 
 ![Base64 Encoder / Decoder](docs/images/base64.png)
 
-### JWT Decoder
+#### JWT Decoder
 
 ![JWT Decoder](docs/images/jwt-decoder.png)
 
-### Case Converter
+#### Case Converter
 
 ![Case Converter](docs/images/case-converter.png)
 
-### QR Code Generator
+#### QR Code Generator
 
 ![QR Code Generator](docs/images/qr-generator.png)
 
-### Dummy Image Generator
+#### Dummy Image Generator
 
 ![Dummy Image Generator](docs/images/dummy-image.png)
 
-### Image Whiteout
+#### Image Whiteout
 
 ![Image Whiteout](docs/images/image-whiteout.png)
+
+### スキルチェッカー
+
+#### スキルチェッカー一覧
+
+![スキルチェッカー](docs/images/skill-checker.png)
+
+#### スキルチェッカー詳細
+
+![スキルチェッカー詳細](docs/images/skill-checker-detail.png)
 
 ## 技術スタック
 
