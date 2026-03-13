@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Full-stack project management system (Backlog-like) with Gantt chart, built as a monorepo:
+Full-stack project management system (Backlog-like) with Gantt chart and developer tools, built as a monorepo:
 
 - **Frontend**: Next.js 16 (App Router) + React 19 + TypeScript + TailwindCSS 4 + TanStack Query 5 + Zod 4
 - **Backend**: FastAPI + Python 3.12 + SQLAlchemy 2.0 (async) + PostgreSQL 16
@@ -37,12 +37,14 @@ alembic upgrade head                 # Apply migrations
 
 ```bash
 cd frontend
-bun run test                         # Watch mode
-bun run test:run                     # Single run
-bun run test:coverage                # Coverage (80% threshold on lines/functions/branches/statements)
+bun run dev                          # Start dev server
+bun run build                        # Production build
+bun run start                        # Start production server
 bun run lint                         # ESLint
 bun run typecheck                    # tsc --noEmit
-bun run build                        # Production build
+bun run test                         # Vitest watch mode
+bun run test:run                     # Single run
+bun run test:coverage                # Coverage (80% threshold on lines/functions/branches/statements)
 ```
 
 ## Architecture
@@ -57,19 +59,65 @@ Routers (app/routers/) → Services (app/services/) → Repositories (app/reposi
 - **All DB operations are async** via `asyncpg` + SQLAlchemy async sessions
 - **Dependency injection**: `Depends(get_db)` for sessions, `Depends(verify_api_key)` for auth
 - **Session lifecycle**: auto-commit on success, rollback on exception (see `database.py:get_db`)
+- **Rate limiting**: `slowapi` with configurable `RATE_LIMIT` (default `60/minute`)
 - Services exist only where business logic is needed: `issue_service`, `dependency_service` (circular dependency detection), `gantt_service`
+
+### Backend Models
+
+`user`, `project`, `issue`, `milestone`, `dependency`, `comment`, `skill_progress`
+
+### Router Registration (backend/app/main.py)
+
+| Router | Prefix | Notes |
+|--------|--------|-------|
+| `users` | `/users` | Top-level |
+| `projects` | `/projects` | Top-level |
+| `skill_progress` | `/skill-progress` | Top-level |
+| `issues` | nested under projects | e.g., `/projects/{id}/issues` |
+| `milestones` | nested under projects | |
+| `dependencies` | nested under projects | |
+| `gantt` | nested under projects | |
+| `comments` | nested under projects | |
+
+Static file serving: `/uploads` directory mounted for uploaded files.
+Health check: `GET /health`
 
 ### Frontend Patterns
 
 - **Data fetching**: Custom hooks in `src/hooks/` wrapping TanStack Query (`useQuery`/`useMutation`)
+  - `useProjects`, `useIssues`, `useGantt`, `useMilestones`, `useComments`, `useMembers`, `useUsers`, `useSkillProgress`
 - **API client**: `src/lib/api-client.ts` — fetch wrapper with error handling
 - **Validation**: Zod schemas in `src/lib/validators.ts`
+- **Utilities**: `src/lib/gantt-utils.ts` (Gantt helpers), `src/lib/translate.ts` (translation), `src/lib/utils.ts` (general)
 - **UI components**: Shadcn UI (Radix-based) in `src/components/ui/`
-- **Gantt chart**: Custom SVG implementation in `src/components/gantt/` with drag/resize support
+- **Gantt chart**: Custom SVG implementation in `src/components/gantt/` (`GanttChart`, `GanttBar`, `GanttMilestone`)
+- **Layout**: `src/components/layout/` (`Header`, `Sidebar`)
+- **Feature components**: `src/components/issues/` (IssueTable, KanbanBoard, IssueComments, WorkHoursTable), `src/components/members/` (MemberList), `src/components/shared/` (MarkdownEditor)
 
-### Router Registration (backend/app/main.py)
+### Frontend Pages (App Router)
 
-Issues, milestones, dependencies, gantt, and comments routers use nested paths under projects (e.g., `/projects/{id}/issues`). Users, projects, and skill-progress have top-level prefixes.
+| Route | Description |
+|-------|-------------|
+| `/` | Home page |
+| `/projects` | Project list |
+| `/projects/new` | Create project |
+| `/projects/[projectId]` | Project detail (issue board) |
+| `/projects/[projectId]/issues/new` | Create issue |
+| `/projects/[projectId]/issues/[issueId]` | Issue detail |
+| `/projects/[projectId]/milestones` | Milestones |
+| `/projects/[projectId]/gantt` | Gantt chart |
+| `/members` | Member management |
+| `/tools` | Developer tools hub |
+| `/tools/base64` | Base64 encoder/decoder |
+| `/tools/case-converter` | Case converter |
+| `/tools/dummy-image` | Dummy image generator |
+| `/tools/image-whiteout` | Image whiteout tool |
+| `/tools/json-formatter` | JSON formatter |
+| `/tools/jwt-decoder` | JWT decoder |
+| `/tools/qr-generator` | QR code generator |
+| `/tools/skill-checker` | Skill checker with roadmap.sh integration |
+
+API routes: `/api/translate`, `/api/roadmap/[...path]` (proxy)
 
 ### Testing
 
@@ -85,8 +133,15 @@ Issues, milestones, dependencies, gantt, and comments routers use nested paths u
 
 Key variables (see `.env.example`):
 
-- `DATABASE_URL` — PostgreSQL connection string (asyncpg)
-- `NEXT_PUBLIC_API_URL` — Backend URL for frontend (default: `http://localhost:8000`)
-- `CORS_ORIGINS` — Comma-separated allowed origins
-- `API_KEY` — Optional API key for `X-API-Key` header auth
-- `RATE_LIMIT` — Rate limit string (default: `60/minute`)
+| Variable | Required | Description | Default |
+|----------|----------|-------------|---------|
+| `POSTGRES_USER` | No | PostgreSQL username | `gantchart` |
+| `POSTGRES_PASSWORD` | No | PostgreSQL password | `gantchart_dev` |
+| `POSTGRES_DB` | No | PostgreSQL database name | `gantchart` |
+| `DATABASE_URL` | Yes | PostgreSQL connection string (asyncpg) | — |
+| `BACKEND_HOST` | No | Backend bind address | `0.0.0.0` |
+| `BACKEND_PORT` | No | Backend port | `8000` |
+| `CORS_ORIGINS` | No | Comma-separated allowed origins | `http://localhost:3000` |
+| `API_KEY` | No | API key for `X-API-Key` header auth | empty (disabled) |
+| `RATE_LIMIT` | No | Rate limit string | `60/minute` |
+| `NEXT_PUBLIC_API_URL` | No | Backend URL for frontend | `http://localhost:8000` |

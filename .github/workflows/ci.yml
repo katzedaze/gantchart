@@ -33,7 +33,7 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: TypeScript type check
         run: bun run --bun tsc --noEmit
@@ -55,7 +55,7 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Run tests with coverage
         run: bun run test:coverage
@@ -85,7 +85,7 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Build
         run: bun run build
@@ -194,7 +194,7 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
 
       - name: Install commitlint
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Validate PR commits
         run: bunx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose

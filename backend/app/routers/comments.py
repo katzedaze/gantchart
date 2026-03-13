@@ -18,7 +18,7 @@ from app.schemas.comment import (
 
 router = APIRouter()
 
-UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/app/uploads")
+UPLOAD_DIR = os.environ.get("UPLOAD_DIR", os.path.join(os.path.dirname(__file__), "..", "..", "uploads"))
 
 
 @router.get("/issues/{issue_id}/comments", response_model=list[CommentResponse])

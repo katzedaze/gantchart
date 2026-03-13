@@ -42,7 +42,7 @@ app.include_router(comments.router, tags=["comments"])
 app.include_router(skill_progress.router, prefix="/skill-progress", tags=["skill-progress"])
 
 # Serve uploaded files
-upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
+upload_dir = os.environ.get("UPLOAD_DIR", os.path.join(os.path.dirname(__file__), "..", "uploads"))
 os.makedirs(upload_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
 

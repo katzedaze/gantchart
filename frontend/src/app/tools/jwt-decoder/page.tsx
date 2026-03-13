@@ -45,11 +45,13 @@ export default function JwtDecoderPage() {
   const [input, setInput] = useState("");
   const [result, setResult] = useState<JwtParts | null>(null);
   const [error, setError] = useState("");
+  const [decodedAt, setDecodedAt] = useState<number>(0);
 
   function handleDecode() {
     setError("");
     try {
       setResult(decodeJwt(input));
+      setDecodedAt(Date.now());
     } catch (e) {
       setError((e as Error).message);
       setResult(null);
@@ -127,7 +129,7 @@ export default function JwtDecoderPage() {
                       <span>{ts}</span>
                       {key === "exp" &&
                         typeof result.payload.exp === "number" &&
-                        result.payload.exp * 1000 < Date.now() && (
+                        result.payload.exp * 1000 < decodedAt && (
                           <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-destructive">
                             Expired
                           </span>
